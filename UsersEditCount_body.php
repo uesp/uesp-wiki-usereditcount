@@ -10,12 +10,12 @@ require_once "$IP/includes/specialpage/QueryPage.php";
  */
 class UsersEditCountPage extends QueryPage
 {
-	var $RequestDate = NULL;
-	var $RequestDateTitle = '';
-	var $OutputCSV = false;
-	var $OutputEmails = false;
-	var $Group = NULL;
-	var $ExcludeGroup = false;
+	var $requestDate = NULL;
+	var $requestDateTitle = '';
+	var $outputCSV = false;
+	var $outputEmails = false;
+	var $group = NULL;
+	var $excludeGroup = false;
 
 	function __construct($name = 'UsersEditCount')
 	{
@@ -25,38 +25,30 @@ class UsersEditCountPage extends QueryPage
 
 		$req = $this->getRequest();
 		$inputdate = $req->getVal('date');
-
-		switch (strtolower($inputdate)) {
+		$lcDate = strtolower($inputdate);
+		switch ($lcDate) {
 			case 'day':
-				$this->RequestDate = 'day';
-				$this->RequestDateTitle = 'day';
-				break;
 			case 'week':
-				$this->RequestDate = 'week';
-				$this->RequestDateTitle = 'week';
-				break;
 			case 'month':
-				$this->RequestDate = 'month';
-				$this->RequestDateTitle = 'month';
+			case 'year':
+				$this->requestDate = $lcDate;
+				$this->requestDateTitle = $lcDate;
 				break;
 			case '6month':
-				$this->RequestDate = '6month';
-				$this->RequestDateTitle = '6 months';
-				break;
-			case 'year':
-				$this->RequestDate = 'year';
-				$this->RequestDateTitle = 'year';
+				$this->requestDate = $lcDate;
+				$this->requestDateTitle = '6 months';
 				break;
 		}
 
-		$this->Group = $req->getVal('group', 'bot');
-		$this->ExcludeGroup = $req->getVal('excludegroup', true) !== null;
+		$this->group = $req->getVal('group', 'bot');
+		$this->excludeGroup = $req->getVal('excludegroup', true) !== null;
 
-		if ($req->getVal('csv') == 1) $this->OutputCSV = true;
+		if ($req->getVal('csv') == 1) {
+			$this->outputCSV = true;
+			if (in_array('sysop', $wgUser->getEffectiveGroups())) $this->outputEmails = true;
+		}
 
-		if (in_array('sysop', $wgUser->getEffectiveGroups())) $this->OutputEmails = true;
-
-		$this->listoutput = false;
+		$this->setListoutput(false);
 	}
 
 	function getName()
@@ -82,21 +74,22 @@ class UsersEditCountPage extends QueryPage
 	function getPageHeader()
 	{
 		$header  = '<p>';
+		$title = $this->getTitle();
 		$skin = $this->getSkin();
 		//$target, $html = null, $customAttribs = [], $query = [], $options = []
-		$linkday = Linker::link($this->getTitle(), 'Day', [], array('date' => 'day'));
-		$linkweek = Linker::link($this->getTitle(), 'Week', [], array('date' => 'week'));
-		$linkmonth = Linker::link($this->getTitle(), 'Month', [], array('date' => 'month'));
-		$link6month = Linker::link($this->getTitle(), '6 Months', [], array('date' => '6month'));
-		$linkyear = Linker::link($this->getTitle(), 'Year', [], array('date' => 'year'));
-		$linkall = Linker::link($this->getTitle(), 'All Time');
+		$linkday = Linker::link($title, 'Day', [], array('date' => 'day'));
+		$linkweek = Linker::link($title, 'Week', [], array('date' => 'week'));
+		$linkmonth = Linker::link($title, 'Month', [], array('date' => 'month'));
+		$link6month = Linker::link($title, '6 Months', [], array('date' => '6month'));
+		$linkyear = Linker::link($title, 'Year', [], array('date' => 'year'));
+		$linkall = Linker::link($title, 'All Time');
 
 		$header .= "<small style='position:absolute; top:12px;'>View Edit Counts for the Last: {$linkday} | {$linkweek} | {$linkmonth} | {$link6month} | {$linkyear} | {$linkall} </small>";
-		$header .= '<br />';
+		$header .= '<br>';
 		$header .= wfMessage('userseditcounttext') . ' ';
 
-		if ($this->RequestDate)
-			$header .= 'Showing counts for edits in the last ' . $this->RequestDateTitle . '. ';
+		if ($this->requestDate)
+			$header .= 'Showing counts for edits in the last ' . $this->requestDateTitle . '. ';
 		else
 			$header .= 'Showing counts for all time.';
 
@@ -106,10 +99,10 @@ class UsersEditCountPage extends QueryPage
 
 	function getQueryInfo()
 	{
-		if ($this->Group) {
+		if ($this->group) {
 			$dbr = wfGetDB(DB_SLAVE);
-			$sql = $dbr->selectSQLText('user_groups', 'ug_user', array('ug_group' => $this->Group));
-			$exclude = $this->ExcludeGroup ? 'NOT' : '';
+			$sql = $dbr->selectSQLText('user_groups', 'ug_user', array('ug_group' => $this->group));
+			$exclude = $this->excludeGroup ? 'NOT' : '';
 		}
 
 		$queryinfo = array(
@@ -126,7 +119,7 @@ class UsersEditCountPage extends QueryPage
 			$queryinfo['conds'][] = "user_id $exclude IN ($sql)";
 		}
 
-		switch ($this->RequestDate) {
+		switch ($this->requestDate) {
 			case 'day':
 				$tsvalue = 1;
 				break;
@@ -170,9 +163,7 @@ class UsersEditCountPage extends QueryPage
 
 	function linkParameters()
 	{
-		$params = array('date' => $this->RequestDate);
-
-		return $params;
+		return array('date' => $this->requestDate);
 	}
 
 	function sortDescending()
@@ -184,7 +175,7 @@ class UsersEditCountPage extends QueryPage
 	{
 		global $wgLang, $wgContLang;
 
-		if ($this->OutputCSV) return $this->formatResultCSV($skin, $result);
+		if ($this->outputCSV) return $this->formatResultCSV($skin, $result);
 
 		$user = null;
 		$user = User::newFromId($result->title);
@@ -209,19 +200,17 @@ class UsersEditCountPage extends QueryPage
 
 	function formatResultCSV($skin, $result)
 	{
-		global $wgLang, $wgContLang;
-
 		$user = null;
 		$user = User::newFromId($result->title);
 
 		if (is_null($user)) {
-			if ($this->OutputEmails) return "{$result->title}, n/a, n/a, {$result->value}";
+			if ($this->outputEmails) return "{$result->title}, n/a, n/a, {$result->value}";
 			return "{$result->title}, {$result->value}";
 		} else if (isset($result->rev_user) && $result->rev_user == 0) {
-			if ($this->OutputEmails) return "Anonymous, Anonymous, n/a, {$result->value}";
+			if ($this->outputEmails) return "Anonymous, Anonymous, n/a, {$result->value}";
 			return "Anonymous, {$result->value}";
 		} else {
-			if ($this->OutputEmails) return "{$user->getName()}, {$user->getRealName()}, {$user->getEmail()}, {$result->value}";
+			if ($this->outputEmails) return "{$user->getName()}, {$user->getRealName()}, {$user->getEmail()}, {$result->value}";
 			return "{$user->getName()}, {$result->value}";
 		}
 	}
