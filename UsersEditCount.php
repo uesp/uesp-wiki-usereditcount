@@ -1,11 +1,11 @@
 <?php
 # Confirm it's being called from a valid entry point; skip unless MEDIAWIKI is defined
 if (!defined('MEDIAWIKI')) {
-        echo <<<EOT
+	echo <<<EOT
 To install the User Edit Count extension, put the following line in LocalSettings.php:
 require_once( \$IP . '/extensions/UsersEditCount/UsersEditCount.php' );
 EOT;
-        exit( 1 );
+	exit(1);
 }
 
 $wgExtensionCredits['specialpage'][] = array(
@@ -30,8 +30,9 @@ $wgAutoloadClasses['UsersEditCountPage'] = $dir . '/UsersEditCount_body.php';
 $wgExtensionMessagesFiles['userseditcount'] = $dir . 'UsersEditCount.i18n.php';
 $wgExtensionMessagesFiles['userseditcountAlias'] = $dir . 'UsersEditCount.alias.php';
 
-function onwgQueryPages( &$wgQueryPages ) {
+function onwgQueryPages(&$wgQueryPages)
+{
 	$wgQueryPages[] = array('UsersEditCountPage', 'Userseditcount');
-	
+
 	return true;
 }

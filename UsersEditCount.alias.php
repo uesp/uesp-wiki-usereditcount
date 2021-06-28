@@ -1,7 +1,7 @@
 <?php
 $specialPageAliases = array();
- 
+
 /** English */
 $specialPageAliases['en'] = array(
-    'UsersEditCount' => array( 'UsersEditCount' ),
+    'UsersEditCount' => array('UsersEditCount'),
 );
