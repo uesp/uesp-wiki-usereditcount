@@ -5,7 +5,7 @@ This directory contains the "Users Edit Count" extension, converted into a stand
 extension.  It is an independent extension that does not require any customizations
 to the core Medawiki files.
 
-It will work with Mediawiki 1.10 or 1.14 (tested up to 1.27)
+It will work with Mediawiki 1.17+ (tested up to 1.27)
 
 ==Installation==
 For a fresh installation of the extension, you need to:
