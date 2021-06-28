@@ -10,12 +10,12 @@ require_once "$IP/includes/specialpage/QueryPage.php";
  */
 class UsersEditCountPage extends QueryPage
 {
-	var $requestDate = NULL;
-	var $requestDateTitle = '';
-	var $outputCSV = false;
-	var $outputEmails = false;
-	var $group = NULL;
-	var $excludeGroup = false;
+	private $requestDate = NULL;
+	private $requestDateTitle = '';
+	private $outputCSV = false;
+	private $outputEmails = false;
+	private $group = NULL;
+	private $excludeGroup = false;
 
 	function __construct($name = 'UsersEditCount')
 	{
@@ -75,13 +75,12 @@ class UsersEditCountPage extends QueryPage
 	{
 		$header  = '<p>';
 		$title = $this->getTitle();
-		$skin = $this->getSkin();
 		//$target, $html = null, $customAttribs = [], $query = [], $options = []
-		$linkday = Linker::link($title, 'Day', [], array('date' => 'day'));
-		$linkweek = Linker::link($title, 'Week', [], array('date' => 'week'));
-		$linkmonth = Linker::link($title, 'Month', [], array('date' => 'month'));
-		$link6month = Linker::link($title, '6 Months', [], array('date' => '6month'));
-		$linkyear = Linker::link($title, 'Year', [], array('date' => 'year'));
+		$linkday = Linker::link($title, 'Day', [], ['date' => 'day']);
+		$linkweek = Linker::link($title, 'Week', [], ['date' => 'week']);
+		$linkmonth = Linker::link($title, 'Month', [], ['date' => 'month']);
+		$link6month = Linker::link($title, '6 Months', [], ['date' => '6month']);
+		$linkyear = Linker::link($title, 'Year', [], ['date' => 'year']);
 		$linkall = Linker::link($title, 'All Time');
 
 		$header .= "<small style='position:absolute; top:12px;'>View Edit Counts for the Last: {$linkday} | {$linkweek} | {$linkmonth} | {$link6month} | {$linkyear} | {$linkall} </small>";
@@ -101,19 +100,19 @@ class UsersEditCountPage extends QueryPage
 	{
 		if ($this->group) {
 			$dbr = wfGetDB(DB_SLAVE);
-			$sql = $dbr->selectSQLText('user_groups', 'ug_user', array('ug_group' => $this->group));
+			$sql = $dbr->selectSQLText('user_groups', 'ug_user', ['ug_group' => $this->group]);
 			$exclude = $this->excludeGroup ? 'NOT' : '';
 		}
 
-		$queryinfo = array(
-			'tables' => array('user'),
-			'fields' => array(
+		$queryinfo = [
+			'tables' => ['user'],
+			'fields' => [
 				'2 as namespace',
 				'user_id as title',
 				'user_editcount as value'
-			),
-			'conds' => array('user_editcount >= 0')
-		);
+			],
+			'conds' => ['user_editcount >= 0']
+		];
 
 		if ($sql) {
 			$queryinfo['conds'][] = "user_id $exclude IN ($sql)";
@@ -143,16 +142,16 @@ class UsersEditCountPage extends QueryPage
 		if ($tsvalue == null) return $queryinfo;
 
 		$tsvalue = time() - ($tsvalue * 86400);
-		$queryinfo = array(
-			'tables' => array('revision'),
-			'fields' => array(
+		$queryinfo = [
+			'tables' => ['revision'],
+			'fields' => [
 				'2 as namespace',
 				'rev_user as title',
 				'count(*) as value'
-			),
-			'conds' => array('rev_timestamp >= "' . wfTimestamp(TS_MW, $tsvalue) . '"'),
-			'options' => array('GROUP BY' => 'rev_user')
-		);
+			],
+			'conds' => ['rev_timestamp >= "' . wfTimestamp(TS_MW, $tsvalue) . '"'],
+			'options' => ['GROUP BY' => 'rev_user']
+		];
 
 		if ($sql) {
 			$queryinfo['conds'][] = "rev_user $exclude IN ($sql)";
@@ -163,7 +162,7 @@ class UsersEditCountPage extends QueryPage
 
 	function linkParameters()
 	{
-		return array('date' => $this->requestDate);
+		return ['date' => $this->requestDate];
 	}
 
 	function sortDescending()
