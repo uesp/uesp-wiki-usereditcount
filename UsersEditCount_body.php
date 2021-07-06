@@ -91,16 +91,50 @@ class UsersEditCountPage extends QueryPage
 		$linkyear = Linker::link($title, 'Year', [], ['date' => 'year']);
 		$linkall = Linker::link($title, 'All Time');
 
-		$header .= "<small style='position:absolute; top:12px;'>View Edit Counts for the Last: {$linkday} | {$linkweek} | {$linkmonth} | {$link6month} | {$linkyear} | {$linkall} </small>";
-		$header .= '<br>';
-		$header .= wfMessage('userseditcounttext') . ' ';
+		# Form tag
+		$header = Xml::openElement(
+			'form',
+			['method' => 'get', 'action' => wfScript(), 'id' => 'mw-listusers-form']
+		) .
+			Xml::fieldset($this->msg('userseditcount')->text()) .
+			Html::hidden('title', $title);
 
-		if ($this->requestDate)
-			$header .= 'Showing counts for edits in the last ' . $this->requestDateTitle . '. ';
-		else
-			$header .= 'Showing counts for all time.';
+		#Date Options
+		$header .= "View Edit Counts for the Last: {$linkday} | {$linkweek} | {$linkmonth} | {$link6month} | {$linkyear} | {$linkall}<br>";
 
-		$header .= '</p>';
+		# Group drop-down list
+		$groupBox = new XmlSelect('group', 'group', $this->group);
+		$groupBox->addOption($this->msg('group-all')->text(), '');
+		foreach ($this->getAllGroups() as $group => $groupText) {
+			$groupBox->addOption($groupText, $group);
+		}
+
+		$header .=
+			Xml::label($this->msg('group')->text(), 'group') . ' ' .
+			$groupBox->getHTML() . '&nbsp;' .
+			Xml::checkLabel(
+				$this->msg('userseditcount-excludegroup')->text(),
+				'excludegroup',
+				'excludegroup',
+				$this->excludeGroup
+			) .
+			'&nbsp;';
+
+		# Submit button and form bottom
+		$header .=
+			Xml::submitButton($this->msg('userseditcount-submit')->text()) .
+			Xml::closeElement('fieldset') .
+			Xml::closeElement('form');
+
+		#Intro line
+		$header .=
+			wfMessage('userseditcount-headingtext') .
+			' Showing counts for ' .
+			($this->requestDate
+				? 'edits in the last ' . $this->requestDateTitle
+				: 'all time') .
+			'.<br>';
+
 		return $header;
 	}
 
@@ -214,5 +248,20 @@ class UsersEditCountPage extends QueryPage
 		return $this->outputEmails
 			? "$name, $realName, $email, $value"
 			: "$name, $value";
+	}
+
+	/**
+	 * Get a list of all explicit groups
+	 * @return array
+	 */
+	private function getAllGroups()
+	{
+		$result = [];
+		foreach (User::getAllGroups() as $group) {
+			$result[$group] = User::getGroupName($group);
+		}
+		asort($result);
+
+		return $result;
 	}
 }
