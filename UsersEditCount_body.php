@@ -1,7 +1,4 @@
 <?php
-global $IP;
-
-require_once "$IP/includes/specialpage/QueryPage.php";
 
 /** UsersEditCountPage extends QueryPage.
  * This does the real work of generating the page contents
@@ -17,11 +14,9 @@ class UsersEditCountPage extends QueryPage
 	private $group = NULL;
 	private $excludeGroup = false;
 
-	function __construct($name = 'UsersEditCount')
+	function __construct()
 	{
-		global $wgUser;
-
-		parent::__construct($name);
+		parent::__construct('Userseditcount');
 
 		$req = $this->getRequest();
 		$inputdate = $req->getVal('date');
@@ -40,20 +35,23 @@ class UsersEditCountPage extends QueryPage
 				break;
 		}
 
-		$this->group = $req->getVal('group', 'bot');
-		$this->excludeGroup = $req->getVal('excludegroup', true) !== null;
+		$group = $req->getVal('group');
+		if (is_null($group)) {
+			$this->group = 'bot';
+			$this->excludeGroup = true;
+		} else {
+			$this->group = $group;
+			$this->excludeGroup = $group === '' ? false : $req->getBool('excludegroup');
+		}
 
-		if ($req->getVal('csv') == 1) {
+		if ($req->getVal('csv')) {
 			$this->outputCSV = true;
-			if (in_array('sysop', $wgUser->getEffectiveGroups())) $this->outputEmails = true;
+			// Note: the rights check below will always fail, since the right doesn't exist unless added. Showing
+			// e-mails is a privacy breach, so should be restricted to those who already have database access anyway.
+			$this->outputEmails = $this->getUser()->isAllowed('viewprivateuserinfo');
 		}
 
 		$this->setListoutput(false);
-	}
-
-	function getName()
-	{
-		return 'UsersEditCount';
 	}
 
 	function isCacheable()
@@ -63,7 +61,7 @@ class UsersEditCountPage extends QueryPage
 
 	function isExpensive()
 	{
-		return false;
+		return true;
 	}
 
 	function isSyndicated()
@@ -74,7 +72,7 @@ class UsersEditCountPage extends QueryPage
 	function getPageHeader()
 	{
 		$header  = '<p>';
-		$title = $this->getTitle();
+		$title = $this->getPageTitle();
 		//$target, $html = null, $customAttribs = [], $query = [], $options = []
 		$linkday = Linker::link($title, 'Day', [], ['date' => 'day']);
 		$linkweek = Linker::link($title, 'Week', [], ['date' => 'week']);
@@ -101,7 +99,9 @@ class UsersEditCountPage extends QueryPage
 		if ($this->group) {
 			$dbr = wfGetDB(DB_SLAVE);
 			$sql = $dbr->selectSQLText('user_groups', 'ug_user', ['ug_group' => $this->group]);
-			$exclude = $this->excludeGroup ? 'NOT' : '';
+			$sql = ($this->excludeGroup ? 'NOT ' : '') . "IN ($sql)";
+		} else {
+			$sql = false;
 		}
 
 		$queryinfo = [
@@ -115,7 +115,7 @@ class UsersEditCountPage extends QueryPage
 		];
 
 		if ($sql) {
-			$queryinfo['conds'][] = "user_id $exclude IN ($sql)";
+			$queryinfo['conds'][] = "user_id $sql";
 		}
 
 		switch ($this->requestDate) {
@@ -154,7 +154,7 @@ class UsersEditCountPage extends QueryPage
 		];
 
 		if ($sql) {
-			$queryinfo['conds'][] = "rev_user $exclude IN ($sql)";
+			$queryinfo['conds'][] = "rev_user $sql";
 		}
 
 		return $queryinfo;
@@ -172,45 +172,47 @@ class UsersEditCountPage extends QueryPage
 
 	function formatResult($skin, $result)
 	{
-		global $wgLang, $wgContLang;
+		$user = isset($result->title) ? User::newFromId($result->title) : null;
 
-		if ($this->outputCSV) return $this->formatResultCSV($skin, $result);
-
-		$user = null;
-		$user = User::newFromId($result->title);
+		if ($this->outputCSV) return $this->formatResultCSV($user, $result->value);
 
 		if (is_null($user)) {
-			return "User ID {$result->title} has {$result->value} edits.";
-		} else if ($user->isAnon()) {
-			return "Anonymous users have {$result->value} edits.";
-		} else {
-			$title = $user->getUserPage();
-			$link  = Linker::link($title, $wgContLang->convert($user->getName()));
-
-			$titletalk = $user->getTalkPage();
-			$linktalk  = Linker::link($titletalk, 'talk');
-
-			$titlecontrib = Title::newFromText("Special:Contributions/{$user->getName()}");
-			$linkcontrib  = Linker::link($titlecontrib, 'contribs');
-
-			return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
+			return "Invalid User ID {$result->title} has {$result->value} edits.";
 		}
+
+		if ($user->isAnon()) {
+			return "Anonymous users have {$result->value} edits.";
+		}
+
+		$link  = Linker::userLink($user->getId(), $user->getName());
+
+		$titletalk = $user->getTalkPage();
+		$linktalk  = Linker::link($titletalk, 'talk');
+
+		$titlecontrib = Title::newFromText("Special:Contributions/{$user->getName()}");
+		$linkcontrib  = Linker::link($titlecontrib, 'contribs');
+
+		return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
 	}
 
-	function formatResultCSV($skin, $result)
+	private function formatResultCSV(User $user, $value)
 	{
-		$user = null;
-		$user = User::newFromId($result->title);
-
+		$realName = 'n/a';
+		$email = 'n/a';
 		if (is_null($user)) {
-			if ($this->outputEmails) return "{$result->title}, n/a, n/a, {$result->value}";
-			return "{$result->title}, {$result->value}";
-		} else if (isset($result->rev_user) && $result->rev_user == 0) {
-			if ($this->outputEmails) return "Anonymous, Anonymous, n/a, {$result->value}";
-			return "Anonymous, {$result->value}";
+			$name = '';
+		} elseif ($user->isAnon()) {
+			$name = 'Anonymous';
 		} else {
-			if ($this->outputEmails) return "{$user->getName()}, {$user->getRealName()}, {$user->getEmail()}, {$result->value}";
-			return "{$user->getName()}, {$result->value}";
+			$name = $user->getName();
+			if ($this->outputEmails) {
+				$realName = $user->getRealName();
+				$email = $user->getEmail();
+			}
 		}
+
+		return $this->outputEmails
+			? "$name, $realName, $email, $value"
+			: "$name, $value";
 	}
 }
