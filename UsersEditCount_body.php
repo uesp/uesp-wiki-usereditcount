@@ -54,19 +54,29 @@ class UsersEditCountPage extends QueryPage
 		$this->setListoutput(false);
 	}
 
-	function isCacheable()
+	function formatResult($skin, $result)
 	{
-		return false;
-	}
+		$user = isset($result->title) ? User::newFromId($result->title) : null;
 
-	function isExpensive()
-	{
-		return true;
-	}
+		if ($this->outputCSV) return $this->formatResultCSV($user, $result->value);
 
-	function isSyndicated()
-	{
-		return false;
+		if (is_null($user)) {
+			return "Invalid User ID {$result->title} has {$result->value} edits.";
+		}
+
+		if ($user->isAnon()) {
+			return "Anonymous users have {$result->value} edits.";
+		}
+
+		$link  = Linker::userLink($user->getId(), $user->getName());
+
+		$titletalk = $user->getTalkPage();
+		$linktalk  = Linker::link($titletalk, 'talk');
+
+		$titlecontrib = Title::newFromText("Special:Contributions/{$user->getName()}");
+		$linkcontrib  = Linker::link($titlecontrib, 'contribs');
+
+		return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
 	}
 
 	function getPageHeader()
@@ -160,6 +170,21 @@ class UsersEditCountPage extends QueryPage
 		return $queryinfo;
 	}
 
+	function isCacheable()
+	{
+		return false;
+	}
+
+	function isExpensive()
+	{
+		return true;
+	}
+
+	function isSyndicated()
+	{
+		return false;
+	}
+
 	function linkParameters()
 	{
 		return ['date' => $this->requestDate];
@@ -168,31 +193,6 @@ class UsersEditCountPage extends QueryPage
 	function sortDescending()
 	{
 		return true;
-	}
-
-	function formatResult($skin, $result)
-	{
-		$user = isset($result->title) ? User::newFromId($result->title) : null;
-
-		if ($this->outputCSV) return $this->formatResultCSV($user, $result->value);
-
-		if (is_null($user)) {
-			return "Invalid User ID {$result->title} has {$result->value} edits.";
-		}
-
-		if ($user->isAnon()) {
-			return "Anonymous users have {$result->value} edits.";
-		}
-
-		$link  = Linker::userLink($user->getId(), $user->getName());
-
-		$titletalk = $user->getTalkPage();
-		$linktalk  = Linker::link($titletalk, 'talk');
-
-		$titlecontrib = Title::newFromText("Special:Contributions/{$user->getName()}");
-		$linkcontrib  = Linker::link($titlecontrib, 'contribs');
-
-		return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
 	}
 
 	private function formatResultCSV(User $user, $value)
