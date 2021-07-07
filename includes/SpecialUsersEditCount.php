@@ -5,7 +5,7 @@
  * @package MediaWiki
  * @subpackage SpecialPage
  */
-class UsersEditCountPage extends QueryPage
+class SpecialUsersEditCount extends QueryPage
 {
 	private $requestDate = NULL;
 	private $requestDateTitle = '';
@@ -14,9 +14,9 @@ class UsersEditCountPage extends QueryPage
 	private $group = NULL;
 	private $excludeGroup = false;
 
-	function __construct()
+	public function __construct($name = 'Userseditcount')
 	{
-		parent::__construct('Userseditcount');
+		parent::__construct($name);
 
 		$req = $this->getRequest();
 		$inputdate = $req->getVal('date');
@@ -54,7 +54,7 @@ class UsersEditCountPage extends QueryPage
 		$this->setListoutput(false);
 	}
 
-	function formatResult($skin, $result)
+	public function formatResult($skin, $result)
 	{
 		$user = isset($result->title) ? User::newFromId($result->title) : null;
 
@@ -79,7 +79,12 @@ class UsersEditCountPage extends QueryPage
 		return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
 	}
 
-	function getPageHeader()
+	public function getGroupName()
+	{
+		return 'users';
+	}
+
+	public function getPageHeader()
 	{
 		$header  = '<p>';
 		$title = $this->getPageTitle();
@@ -138,7 +143,7 @@ class UsersEditCountPage extends QueryPage
 		return $header;
 	}
 
-	function getQueryInfo()
+	public function getQueryInfo()
 	{
 		if ($this->group) {
 			$dbr = wfGetDB(DB_SLAVE);
@@ -204,27 +209,27 @@ class UsersEditCountPage extends QueryPage
 		return $queryinfo;
 	}
 
-	function isCacheable()
+	public function isCacheable()
 	{
 		return false;
 	}
 
-	function isExpensive()
+	public function isExpensive()
 	{
 		return true;
 	}
 
-	function isSyndicated()
+	public function isSyndicated()
 	{
 		return false;
 	}
 
-	function linkParameters()
+	public function linkParameters()
 	{
 		return ['date' => $this->requestDate];
 	}
 
-	function sortDescending()
+	public function sortDescending()
 	{
 		return true;
 	}

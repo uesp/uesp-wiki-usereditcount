@@ -1,0 +1,26 @@
+{
+	"name": "UsersEditCount",
+	"version": "1.2",
+	"author": [
+		"Dave Humphrey",
+		"RobinHood70"
+	],
+	"url": "http://www.uesp.net/wiki/UESPWiki:Users_Edit_Count",
+	"descriptionmsg": "userseditcount-desc",
+	"type": "specialpage",
+	"SpecialPages": {
+		"UsersEditCount": "SpecialUsersEditCount"
+	},
+	"ExtensionMessagesFiles": {
+		"userseditcount": "i18n/UsersEditCount.i18n.php",
+		"userseditcountAlias": "i18n/UsersEditCount.i18n.alias.php"
+	},
+	"AutoloadClasses": {
+		"UsersEditCountHooks": "includes/UsersEditCountHooks.php",
+		"SpecialUsersEditCount": "includes/SpecialUsersEditCount.php"
+	},
+	"Hooks": {
+		"wgQueryPages": "UsersEditCountHooks::onwgQueryPages"
+	},
+	"manifest_version": 1
+}

@@ -5,14 +5,14 @@ This directory contains the "Users Edit Count" extension, converted into a stand
 extension.  It is an independent extension that does not require any customizations
 to the core Medawiki files.
 
-It will work with Mediawiki 1.17+ (tested up to 1.27)
+It will work with Mediawiki 1.25+ (tested up to 1.27)
 
 ==Installation==
 For a fresh installation of the extension, you need to:
 (a) place the files in this directory into $IP/extensions/UsersEditCount
 (b) add the following line to LocalSettings.php:
 
-require_once( $IP . '/extensions/UsersEditCount/UsersEditCount.php' );
+wfLoadExtension('UsersEditCount.php');
 
 To check that the extension is working:
 * View [[Special:SpecialPages]] and confirm that "Users Edit Count" is listed
