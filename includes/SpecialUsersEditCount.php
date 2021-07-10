@@ -7,6 +7,22 @@
  */
 class SpecialUsersEditCount extends QueryPage
 {
+	private static $requestDates = [
+		'day' => 1,
+		'week' => 7,
+		'month' => 31,
+		'6month' => 182.5,
+		'year' => 365,
+	];
+
+	private static $inputDateReverse = [
+		1 => 'day',
+		7 => 'week',
+		31 => 'month',
+		182.5 => '6months',
+		365 => 'year',
+	];
+
 	private $requestDate = NULL;
 	private $requestDateTitle = '';
 	private $outputCSV = false;
@@ -19,19 +35,35 @@ class SpecialUsersEditCount extends QueryPage
 		parent::__construct($name);
 
 		$req = $this->getRequest();
-		$inputdate = $req->getVal('date');
-		$lcDate = strtolower($inputdate);
-		switch ($lcDate) {
+		$inputDate = $req->getVal('date');
+		if ($inputDate) {
+			$inputDate = strtolower($inputDate);
+		}
+
+		if (isset(self::$inputDateReverse[$inputDate])) {
+			$inputDate = self::$inputDateReverse[$inputDate];
+		}
+
+		switch ($inputDate) {
 			case 'day':
 			case 'week':
 			case 'month':
 			case 'year':
-				$this->requestDate = $lcDate;
-				$this->requestDateTitle = $lcDate;
+				$this->requestDateTitle = $inputDate;
+				$this->requestDate = self::$requestDates[$inputDate];
 				break;
 			case '6month':
-				$this->requestDate = $lcDate;
 				$this->requestDateTitle = '6 months';
+				$this->requestDate = self::$requestDates[$inputDate];
+				break;
+			default:
+				if (is_numeric($inputDate)) {
+					$this->requestDateTitle = $inputDate . ' days';
+				} else {
+					$inputDate = null;
+					$this->requestDateTitle = null;
+				}
+
 				break;
 		}
 
@@ -56,27 +88,25 @@ class SpecialUsersEditCount extends QueryPage
 
 	public function formatResult($skin, $result)
 	{
-		$user = isset($result->title) ? User::newFromId($result->title) : null;
-
-		if ($this->outputCSV) return $this->formatResultCSV($user, $result->value);
-
-		if (is_null($user)) {
-			return "Invalid User ID {$result->title} has {$result->value} edits.";
+		if ($this->outputCSV) {
+			return $this->formatResultCSV($result);
 		}
 
-		if ($user->isAnon()) {
-			return "Anonymous users have {$result->value} edits.";
+		if (isset($result->title)) {
+			$msg = 'normal';
+			$name = $result->title;
+			$user = User::newFromName($result->title);
+			$name = $user === false ? wfMessage('userseditcount-invaliduser') : Linker::userLink($user->getId(), $name) . Linker::userToolLinks($user->getId(), $result->title, false, Linker::TOOL_LINKS_NOBLOCK, $result->value);
+		} else {
+			$msg = 'anon';
+			$name = null;
+			$user = User::newFromId(0);
 		}
 
-		$link  = Linker::userLink($user->getId(), $user->getName());
-
-		$titletalk = $user->getTalkPage();
-		$linktalk  = Linker::link($titletalk, 'talk');
-
-		$titlecontrib = Title::newFromText("Special:Contributions/{$user->getName()}");
-		$linkcontrib  = Linker::link($titlecontrib, 'contribs');
-
-		return "{$link} ( {$linktalk} | {$linkcontrib} ) has {$result->value} edits.";
+		return wfMessage('userseditcount-result-' . $msg)
+			->params($name)
+			->numParams($result->value)
+			->text();
 	}
 
 	public function getGroupName()
@@ -145,68 +175,35 @@ class SpecialUsersEditCount extends QueryPage
 
 	public function getQueryInfo()
 	{
-		if ($this->group) {
-			$dbr = wfGetDB(DB_SLAVE);
-			$sql = $dbr->selectSQLText('user_groups', 'ug_user', ['ug_group' => $this->group]);
-			$sql = ($this->excludeGroup ? 'NOT ' : '') . "IN ($sql)";
-		} else {
-			$sql = false;
-		}
-
-		$queryinfo = [
-			'tables' => ['user'],
+		$queryInfo = [
+			'tables' => ['revision', 'user'],
 			'fields' => [
 				'2 as namespace',
-				'user_id as title',
-				'user_editcount as value'
+				'user_name as title',
+				'COUNT(*) as value'
 			],
-			'conds' => ['user_editcount >= 0']
-		];
-
-		if ($sql) {
-			$queryinfo['conds'][] = "user_id $sql";
-		}
-
-		switch ($this->requestDate) {
-			case 'day':
-				$tsvalue = 1;
-				break;
-			case 'week':
-				$tsvalue = 7;
-				break;
-			case 'month':
-				$tsvalue = 31;
-				break;
-			case '6month':
-				$tsvalue = 182.5;
-				break;
-			case 'year':
-				$tsvalue = 365;
-				break;
-			default:
-				$tsvalue = null;
-				break;
-		}
-
-		if ($tsvalue == null) return $queryinfo;
-
-		$tsvalue = time() - ($tsvalue * 86400);
-		$queryinfo = [
-			'tables' => ['revision'],
-			'fields' => [
-				'2 as namespace',
-				'rev_user as title',
-				'count(*) as value'
+			'conds' => [],
+			'join_conds' => [
+				'user' => [
+					'LEFT JOIN',
+					['rev_user=user_id']
+				]
 			],
-			'conds' => ['rev_timestamp >= "' . wfTimestamp(TS_MW, $tsvalue) . '"'],
 			'options' => ['GROUP BY' => 'rev_user']
 		];
 
-		if ($sql) {
-			$queryinfo['conds'][] = "rev_user $sql";
+		if ($this->group) {
+			$dbr = wfGetDB(DB_SLAVE);
+			$groupFilter = $dbr->selectSQLText('user_groups', 'ug_user', ['ug_group' => $this->group]);
+			$not = $this->excludeGroup ? ' NOT' : '';
+			$queryInfo['conds'][] = "rev_user$not IN ($groupFilter)";
 		}
 
-		return $queryinfo;
+		if (!is_null($this->requestDate)) {
+			$queryInfo['conds'][] = 'rev_timestamp >= "' . wfTimestamp(TS_MW, time() - ($this->requestDate * 86400)) . '"';
+		}
+
+		return $queryInfo;
 	}
 
 	public function isCacheable()
@@ -234,11 +231,15 @@ class SpecialUsersEditCount extends QueryPage
 		return true;
 	}
 
-	private function formatResultCSV(User $user, $value)
+	private function formatResultCSV($result)
 	{
+		$user = isset($result->title)
+			? User::newFromName($result->title)
+			: User::newFromId(0);
+		$value = $result->value;
 		$realName = 'n/a';
 		$email = 'n/a';
-		if (is_null($user)) {
+		if ($user === false) {
 			$name = '';
 		} elseif ($user->isAnon()) {
 			$name = 'Anonymous';
