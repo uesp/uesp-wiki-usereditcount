@@ -27,8 +27,6 @@ class SpecialUsersEditCount extends QueryPage
 
 	private $requestDate = NULL;
 	private $requestDateTitle = '';
-	private $outputCSV = false;
-	private $outputEmails = false;
 	private $group = NULL;
 	private $excludeGroup = false;
 
@@ -69,22 +67,11 @@ class SpecialUsersEditCount extends QueryPage
 			$this->excludeGroup = $group === '' ? false : $req->getBool('excludegroup');
 		}
 
-		if ($req->getVal('csv')) {
-			$this->outputCSV = true;
-			// Note: the rights check below will always fail, since the right doesn't exist unless added. Showing
-			// e-mails is a privacy breach, so should be restricted to those who already have database access anyway.
-			$this->outputEmails = $this->getUser()->isAllowed('viewprivateuserinfo');
-		}
-
 		$this->setListoutput(false);
 	}
 
 	public function formatResult($skin, $result)
 	{
-		if ($this->outputCSV) {
-			return $this->formatResultCSV($result);
-		}
-
 		if (isset($result->title)) {
 			$msg = 'normal';
 			$name = $result->title;
@@ -224,31 +211,6 @@ class SpecialUsersEditCount extends QueryPage
 	public function sortDescending()
 	{
 		return true;
-	}
-
-	private function formatResultCSV($result)
-	{
-		$user = isset($result->title)
-			? User::newFromName($result->title)
-			: User::newFromId(0);
-		$value = $result->value;
-		$realName = 'n/a';
-		$email = 'n/a';
-		if ($user === false) {
-			$name = '';
-		} elseif ($user->isAnon()) {
-			$name = 'Anonymous';
-		} else {
-			$name = $user->getName();
-			if ($this->outputEmails) {
-				$realName = $user->getRealName();
-				$email = $user->getEmail();
-			}
-		}
-
-		return $this->outputEmails
-			? "$name, $realName, $email, $value"
-			: "$name, $value";
 	}
 
 	/**
