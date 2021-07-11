@@ -12,7 +12,6 @@
 		"UsersEditCount": "SpecialUsersEditCount"
 	},
 	"ExtensionMessagesFiles": {
-		"userseditcount": "i18n/UsersEditCount.i18n.php",
 		"userseditcountAlias": "i18n/UsersEditCount.i18n.alias.php"
 	},
 	"AutoloadClasses": {
@@ -21,6 +20,11 @@
 	},
 	"Hooks": {
 		"wgQueryPages": "UsersEditCountHooks::onwgQueryPages"
+	},
+	"MessagesDirs": {
+		"UsersEditCount": [
+			"i18n"
+		]
 	},
 	"manifest_version": 1
 }

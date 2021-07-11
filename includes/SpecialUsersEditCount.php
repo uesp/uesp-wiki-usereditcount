@@ -7,6 +7,7 @@
  */
 class SpecialUsersEditCount extends QueryPage
 {
+	private static $UEC = 'userseditcount-';
 	private static $requestDates = [
 		'day' => 1,
 		'week' => 7,
@@ -15,12 +16,13 @@ class SpecialUsersEditCount extends QueryPage
 		'year' => 365,
 	];
 
-	private static $inputDateReverse = [
-		1 => 'day',
-		7 => 'week',
-		31 => 'month',
-		182.5 => '6months',
-		365 => 'year',
+	// Can't use array_flip for this because of the non-integer value.
+	private static $requestDatesFlipped = [
+		'1' => 'day',
+		'7' => 'week',
+		'31' => 'month',
+		'182.5' => '6month',
+		'365' => 'year',
 	];
 
 	private $requestDate = NULL;
@@ -40,31 +42,22 @@ class SpecialUsersEditCount extends QueryPage
 			$inputDate = strtolower($inputDate);
 		}
 
-		if (isset(self::$inputDateReverse[$inputDate])) {
-			$inputDate = self::$inputDateReverse[$inputDate];
+		// Since we now allow any date to be entered, check if it's one of the well-known values and reverse it if so.
+		if (isset(self::$requestDatesFlipped[$inputDate])) {
+			$inputDate = self::$requestDatesFlipped[$inputDate];
 		}
 
-		switch ($inputDate) {
-			case 'day':
-			case 'week':
-			case 'month':
-			case 'year':
-				$this->requestDateTitle = $inputDate;
-				$this->requestDate = self::$requestDates[$inputDate];
-				break;
-			case '6month':
-				$this->requestDateTitle = '6 months';
-				$this->requestDate = self::$requestDates[$inputDate];
-				break;
-			default:
-				if (is_numeric($inputDate)) {
-					$this->requestDateTitle = $inputDate . ' days';
-				} else {
-					$inputDate = null;
-					$this->requestDateTitle = null;
-				}
-
-				break;
+		if (isset(self::$requestDates[$inputDate])) {
+			$this->requestDate = self::$requestDates[$inputDate];
+			$this->requestDateTitle = $this->msg(self::$UEC . "showrange-$inputDate")->text();
+		} else {
+			if (is_numeric($inputDate)) {
+				$this->requestDate = $inputDate;
+				$this->requestDateTitle = $this->msg(self::$UEC . 'showrange-days', $inputDate)->text();
+			} else {
+				$this->requestDate = null;
+				$this->requestDateTitle = $this->msg(self::$UEC . 'showrange-all')->text();
+			}
 		}
 
 		$group = $req->getVal('group');
@@ -96,14 +89,16 @@ class SpecialUsersEditCount extends QueryPage
 			$msg = 'normal';
 			$name = $result->title;
 			$user = User::newFromName($result->title);
-			$name = $user === false ? wfMessage('userseditcount-invaliduser') : Linker::userLink($user->getId(), $name) . Linker::userToolLinks($user->getId(), $result->title, false, Linker::TOOL_LINKS_NOBLOCK, $result->value);
+			$name = $user === false
+				? $this->msg(self::$UEC . 'invaliduser')->text()
+				: Linker::userLink($user->getId(), $name) . Linker::userToolLinks($user->getId(), $result->title, false, Linker::TOOL_LINKS_NOBLOCK, $result->value);
 		} else {
 			$msg = 'anon';
 			$name = null;
 			$user = User::newFromId(0);
 		}
 
-		return wfMessage('userseditcount-result-' . $msg)
+		return $this->msg(self::$UEC . 'result-' . $msg)
 			->params($name)
 			->numParams($result->value)
 			->text();
@@ -118,15 +113,8 @@ class SpecialUsersEditCount extends QueryPage
 	{
 		$header  = '<p>';
 		$title = $this->getPageTitle();
-		//$target, $html = null, $customAttribs = [], $query = [], $options = []
-		$linkday = Linker::link($title, 'Day', [], ['date' => 'day']);
-		$linkweek = Linker::link($title, 'Week', [], ['date' => 'week']);
-		$linkmonth = Linker::link($title, 'Month', [], ['date' => 'month']);
-		$link6month = Linker::link($title, '6 Months', [], ['date' => '6month']);
-		$linkyear = Linker::link($title, 'Year', [], ['date' => 'year']);
-		$linkall = Linker::link($title, 'All Time');
 
-		# Form tag
+		// Form tag
 		$header = Xml::openElement(
 			'form',
 			['method' => 'get', 'action' => wfScript(), 'id' => 'mw-listusers-form']
@@ -134,10 +122,16 @@ class SpecialUsersEditCount extends QueryPage
 			Xml::fieldset($this->msg('userseditcount')->text()) .
 			Html::hidden('title', $title);
 
-		#Date Options
-		$header .= "View Edit Counts for the Last: {$linkday} | {$linkweek} | {$linkmonth} | {$link6month} | {$linkyear} | {$linkall}<br>";
+		// Date Options
+		$msg = $this->msg(self::$UEC . 'headerlinks');
+		foreach (array_keys(self::$requestDates) as $dateRange) {
+			$msg->params($this->makeLink($title, $dateRange));
+		}
 
-		# Group drop-down list
+		$msg->params($this->makeLink($title, 'all'));
+		$header .= $msg->text() . '<br>';
+
+		// Group drop-down list
 		$groupBox = new XmlSelect('group', 'group', $this->group);
 		$groupBox->addOption($this->msg('group-all')->text(), '');
 		foreach ($this->getAllGroups() as $group => $groupText) {
@@ -148,29 +142,26 @@ class SpecialUsersEditCount extends QueryPage
 			Xml::label($this->msg('group')->text(), 'group') . ' ' .
 			$groupBox->getHTML() . '&nbsp;' .
 			Xml::checkLabel(
-				$this->msg('userseditcount-excludegroup')->text(),
+				$this->msg(self::$UEC . 'excludegroup')->text(),
 				'excludegroup',
 				'excludegroup',
 				$this->excludeGroup
 			) .
 			'&nbsp;';
 
-		# Submit button and form bottom
+		// Submit button and form bottom
 		$header .=
-			Xml::submitButton($this->msg('userseditcount-submit')->text()) .
+			Xml::submitButton($this->msg(self::$UEC . 'submit')->text()) .
 			Xml::closeElement('fieldset') .
 			Xml::closeElement('form');
 
-		#Intro line
-		$header .=
-			wfMessage('userseditcount-headingtext') .
-			' Showing counts for ' .
-			($this->requestDate
-				? 'edits in the last ' . $this->requestDateTitle
-				: 'all time') .
-			'.<br>';
-
-		return $header;
+		// Intro line
+		return
+			$header .
+			$this->msg(self::$UEC . 'headingtext') .
+			' ' .
+			$this->requestDateTitle .
+			'<br>';
 	}
 
 	public function getQueryInfo()
@@ -223,7 +214,11 @@ class SpecialUsersEditCount extends QueryPage
 
 	public function linkParameters()
 	{
-		return ['date' => $this->requestDate];
+		return [
+			'date' => $this->requestDate,
+			'group' => $this->group,
+			'excludegroup' => $this->excludeGroup
+		];
 	}
 
 	public function sortDescending()
@@ -269,5 +264,17 @@ class SpecialUsersEditCount extends QueryPage
 		asort($result);
 
 		return $result;
+	}
+
+	private function makeLink($title, $dateRange)
+	{
+		$params = $this->linkParameters();
+		$params['date'] = $dateRange;
+		return Linker::link(
+			$title,
+			$this->msg("userseditcount-daterange-$dateRange"),
+			[],
+			$params
+		);
 	}
 }
