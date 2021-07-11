@@ -107,7 +107,8 @@ class SpecialUsersEditCount extends QueryPage
 			['method' => 'get', 'action' => wfScript(), 'id' => 'mw-listusers-form']
 		) .
 			Xml::fieldset($this->msg('userseditcount')->text()) .
-			Html::hidden('title', $title);
+			Html::hidden('title', $title) .
+			Html::hidden('date', $this->requestDate);
 
 		// Date Options
 		$msg = $this->msg(self::$UEC . 'headerlinks');
