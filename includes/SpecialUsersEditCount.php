@@ -143,43 +143,57 @@ class SpecialUsersEditCount extends QueryPage
 			Xml::closeElement('fieldset') .
 			Xml::closeElement('form');
 
+		$note = is_null($this->requestDate) ? $this->msg(self::$UEC . 'estimate')->text() : '';
+
 		// Intro line
 		return
 			$header .
 			$this->msg(self::$UEC . 'headingtext') .
 			' ' .
 			$this->requestDateTitle .
+			$note .
 			'<br>';
 	}
 
 	public function getQueryInfo()
 	{
-		$queryInfo = [
-			'tables' => ['revision', 'user'],
-			'fields' => [
-				'2 as namespace',
-				'user_name as title',
-				'COUNT(*) as value'
-			],
-			'conds' => [],
-			'join_conds' => [
-				'user' => [
-					'LEFT JOIN',
-					['rev_user=user_id']
-				]
-			],
-			'options' => ['GROUP BY' => 'rev_user']
-		];
+		if (is_null($this->requestDate)) {
+			// Note that user_editcount is not guaranteed to be accurate, but this query is roughly 5x faster than the revisions query.
+			$filterField = 'user_id';
+			$queryInfo = [
+				'tables' => ['user'],
+				'fields' => [
+					'2 as namespace',
+					'user_name as title',
+					'user_editcount as value'
+				],
+				'conds' => ['user_editcount >= 0']
+			];
+		} else {
+			$filterField = 'rev_user';
+			$queryInfo = [
+				'tables' => ['revision', 'user'],
+				'fields' => [
+					'2 as namespace',
+					'user_name as title',
+					'COUNT(*) as value'
+				],
+				'conds' => ['rev_timestamp >= "' . wfTimestamp(TS_MW, time() - ($this->requestDate * 86400)) . '"'],
+				'join_conds' => [
+					'user' => [
+						'LEFT JOIN',
+						['rev_user=user_id']
+					]
+				],
+				'options' => ['GROUP BY' => 'rev_user']
+			];
+		}
 
 		if ($this->group) {
 			$dbr = wfGetDB(DB_SLAVE);
 			$groupFilter = $dbr->selectSQLText('user_groups', 'ug_user', ['ug_group' => $this->group]);
 			$not = $this->excludeGroup ? ' NOT' : '';
-			$queryInfo['conds'][] = "rev_user$not IN ($groupFilter)";
-		}
-
-		if (!is_null($this->requestDate)) {
-			$queryInfo['conds'][] = 'rev_timestamp >= "' . wfTimestamp(TS_MW, time() - ($this->requestDate * 86400)) . '"';
+			$queryInfo['conds'][] = "$filterField$not IN ($groupFilter)";
 		}
 
 		return $queryInfo;

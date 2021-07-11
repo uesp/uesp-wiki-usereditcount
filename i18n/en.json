@@ -13,6 +13,7 @@
 	"userseditcount-daterange-year": "Year",
 	"userseditcount-daterange-all": "All",
 	"userseditcount-desc": "Special page listing edit counts for all editors",
+	"userseditcount-estimate": " (Note: edit counts when no date filter is set are estimates and may not match edit counts with date filters, even if all edits are within the same period.)",
 	"userseditcount-excludegroup": "Invert group selection (ignored for \"all\")",
 	"userseditcount-headerlinks": "View edit counts for the last: $1 | $2 | $3 | $4 | $5 | $6",
 	"userseditcount-headingtext": "The following is a list of all registered editors on {{SITENAME}}, sorted by total edit count.",
