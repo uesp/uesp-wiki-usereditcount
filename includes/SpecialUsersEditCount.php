@@ -30,7 +30,7 @@ class SpecialUsersEditCount extends QueryPage
 	private $group = NULL;
 	private $excludeGroup = false;
 
-	public function __construct($name = 'Userseditcount')
+	public function __construct($name = 'UsersEditCount')
 	{
 		parent::__construct($name);
 
