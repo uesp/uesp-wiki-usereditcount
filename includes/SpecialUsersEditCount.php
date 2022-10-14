@@ -41,10 +41,7 @@ class SpecialUsersEditCount extends QueryPage
 		}
 
 		// Since we now allow any date to be entered, check if it's one of the well-known values and reverse it if so.
-		if (isset(self::$requestDatesFlipped[$inputDate])) {
-			$inputDate = self::$requestDatesFlipped[$inputDate];
-		}
-
+		$inputDate = self::$requestDatesFlipped[$inputDate] ?? null;
 		if (isset(self::$requestDates[$inputDate])) {
 			$this->requestDate = self::$requestDates[$inputDate];
 			$this->requestDateTitle = $this->msg(self::$UEC . "showrange-$inputDate")->text();
@@ -70,7 +67,7 @@ class SpecialUsersEditCount extends QueryPage
 		$this->setListoutput(false);
 	}
 
-	public function formatResult($skin, $result)
+	public function formatResult($skin, $result): string
 	{
 		if (isset($result->title)) {
 			$msg = 'normal';
@@ -91,12 +88,12 @@ class SpecialUsersEditCount extends QueryPage
 			->text();
 	}
 
-	public function getGroupName()
+	public function getGroupName(): string
 	{
 		return 'users';
 	}
 
-	public function getPageHeader()
+	public function getPageHeader(): string
 	{
 		$header  = '<p>';
 		$title = $this->getPageTitle();
@@ -155,7 +152,7 @@ class SpecialUsersEditCount extends QueryPage
 			'<br>';
 	}
 
-	public function getQueryInfo()
+	public function getQueryInfo(): array
 	{
 		if (is_null($this->requestDate)) {
 			// Note that user_editcount is not guaranteed to be accurate, but this query is roughly 5x faster than the revisions query.
@@ -199,22 +196,22 @@ class SpecialUsersEditCount extends QueryPage
 		return $queryInfo;
 	}
 
-	public function isCacheable()
+	public function isCacheable(): bool
 	{
 		return false;
 	}
 
-	public function isExpensive()
+	public function isExpensive(): bool
 	{
 		return true;
 	}
 
-	public function isSyndicated()
+	public function isSyndicated(): bool
 	{
 		return false;
 	}
 
-	public function linkParameters()
+	public function linkParameters(): array
 	{
 		return [
 			'date' => $this->requestDate,
@@ -223,7 +220,7 @@ class SpecialUsersEditCount extends QueryPage
 		];
 	}
 
-	public function sortDescending()
+	public function sortDescending(): bool
 	{
 		return true;
 	}
@@ -232,7 +229,7 @@ class SpecialUsersEditCount extends QueryPage
 	 * Get a list of all explicit groups
 	 * @return array
 	 */
-	private function getAllGroups()
+	private function getAllGroups(): array
 	{
 		$result = [];
 		foreach (User::getAllGroups() as $group) {
@@ -243,7 +240,7 @@ class SpecialUsersEditCount extends QueryPage
 		return $result;
 	}
 
-	private function makeLink($title, $dateRange)
+	private function makeLink($title, $dateRange): string
 	{
 		$params = $this->linkParameters();
 		$params['date'] = $dateRange;
