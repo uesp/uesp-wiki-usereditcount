@@ -1,0 +1,20 @@
+wname = uesp.wiki-usereditcount
+description = MediaWiki extension used on UESP.net
+repository = https://github.com/uesp/wiki-usereditcount
+backup = true
+verbosity = 0
+
+	# Staging is important as the APC cache randomly breaks if you try to update the files in place.
+staged = true
+
+ignore = *.deploy
+ignore = .git*
+
+dest = content1.uesp.net:/home/uesp/www/w/extensions/UsersEditCount/
+dest = content2.uesp.net:/home/uesp/www/w/extensions/UsersEditCount/
+dest = content3.uesp.net:/home/uesp/www/w/extensions/UsersEditCount/
+
+destname = [backup]backup1.uesp.net:/home/uesp/www/w/extensions/UsersEditCount/
+destname = [dev]content3.uesp.net:/home/uesp/dev/www/w/extensions/UsersEditCount/
+destname = [dev]content3.uesp.net:/home/sfwiki/dev/www/w/extensions/UsersEditCount/
+

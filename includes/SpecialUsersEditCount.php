@@ -151,9 +151,23 @@ class SpecialUsersEditCount extends QueryPage
 			$note .
 			'<br>';
 	}
-
+	
+	
+	public function execute($par) 
+	{
+		$user = RequestContext::getMain()->getUser();
+		
+		if (!$user->isLoggedIn()) {
+			$this->displayRestrictionError();
+			return;
+		}
+	
+		return QueryPage::execute($par);
+	}
+	
 	public function getQueryInfo(): array
 	{
+		
 		if (is_null($this->requestDate)) {
 			// Note that user_editcount is not guaranteed to be accurate, but this query is roughly 5x faster than the revisions query.
 			$filterField = 'user_id';
