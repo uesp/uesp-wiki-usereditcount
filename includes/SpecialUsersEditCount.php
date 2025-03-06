@@ -41,7 +41,7 @@ class SpecialUsersEditCount extends QueryPage
 		}
 
 		// Since we now allow any date to be entered, check if it's one of the well-known values and reverse it if so.
-		$inputDate = self::$requestDatesFlipped[$inputDate] ?? null;
+		$inputDate = self::$requestDatesFlipped[$inputDate] ?? $inputDate;
 		if (isset(self::$requestDates[$inputDate])) {
 			$this->requestDate = self::$requestDates[$inputDate];
 			$this->requestDateTitle = $this->msg(self::$UEC . "showrange-$inputDate")->text();
